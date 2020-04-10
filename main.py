@@ -124,6 +124,9 @@ def main(showDescr = True):
             if index:  # if index == 0: don't evaluate
                 values[selection[index - 1]] += 1
         except KeyboardInterrupt:
+            if sessionPath is None:
+                sessionPath = input(f"Please enter session name for saving:")
+
 
             print("Saving Session: {}".format(sessionPath))
             dump = {
