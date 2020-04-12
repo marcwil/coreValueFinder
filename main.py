@@ -19,7 +19,7 @@ def loadValues():
         with open(valuesFiles[selection-1]) as json_file:
             return json.load(json_file)
     except Exception as e:
-        print("Failed loading value set: {}".format(str(e)))
+        print(f"Failed loading value set: {str(e)}")
         return {}
 
 def getSessionFilePath():
@@ -27,7 +27,7 @@ def getSessionFilePath():
     print("Present Sessions:")
     print("[0] New Session")
     for i, path in enumerate(sessions):
-        print("[{}] {}".format(i+1, path))
+        print(f"[{i+1}] {path}")
 
     inp = input("Load Session: ")
     if (inp == "" or inp == "0"):
@@ -97,13 +97,13 @@ def main(showDescr = True):
             data = json.load(json_file)
             values = data['values']
     except Exception as e:
-        print("Failed loading Session: {}".format(str(e)))
+        print(f"Failed loading Session: {str(e)}")
         print("Fallback to new Session")
         sessionPath = None
 
     if not sessionPath:
         sessionPath = ".{}.session".format(time.strftime("%Y-%m-%d-%H:%M"))
-        print("New Session: {}".format(sessionPath))
+        print(f"New Session: {sessionPath}")
         for v in valueset.keys():
             values[v] = 0
 
@@ -115,9 +115,10 @@ def main(showDescr = True):
         if showDescr:
             for i in range(0, len(selection)):
                 valueName = selection[i]
-                print("[{}] {} -- {}".format(i+1, valueName, valueset.get(valueName,{}).get('descr',"")))
+                desc = valueset.get(valueName, {}).get('descr', "")
+                print(f"[{i+1}] {valueName} -- {desc}")
         else:
-            print("[1] {0} [2] {1} [3] {2}".format(selection[0], selection[1], selection[2]))
+            print(f"[1] {selection[0]} [2] {selection[1]} [3] {selection[2]}")
 
         try:
             index = get_input()
@@ -125,7 +126,7 @@ def main(showDescr = True):
                 values[selection[index - 1]] += 1
         except KeyboardInterrupt:
 
-            print("Saving Session: {}".format(sessionPath))
+            print(f"Saving Session: {sessionPath}")
             dump = {
                 "values": values,
                 "timestamp": time.strftime("%Y%m%d-%H%M%S")
@@ -137,10 +138,10 @@ def main(showDescr = True):
 
     sorted_x = sorted(values.items(), key=operator.itemgetter(1), reverse=True)
     clear("Values sorted by number of times they 'outcompeted' others.")
-    print("A total of {0} comparisons has been done.\n".format(sum(values.values())))
+    print(f"A total of {sum(values.values())} comparisons has been done.\n")
     print("----- ---------------")
     for k, v in sorted_x:
-        print("{1:>4}: {0}".format(k, v))
+        print(f"{v:>4}: {k}".format(k, v))
 
 
 if __name__ == "__main__":
