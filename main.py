@@ -7,6 +7,21 @@ import json
 import time
 import glob
 
+
+class Graph(object):
+    def __init__(self, n):
+        self._adj = [0] * n
+        for i in range(n):
+            self._adj[i] = [0]*n
+
+    @property
+    def adj(self):
+        return self._adj
+
+    def add_edge(self, u, v):
+        self._adj[u][v] += 1
+    
+
 def loadValues():
     valuesFiles = glob.glob('*.values')
     selection = 0
