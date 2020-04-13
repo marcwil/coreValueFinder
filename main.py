@@ -1,11 +1,12 @@
 #!/usr/bin/python3
-from random import choice
+import glob
+import json
+import operator
 import os
 import sys
-import operator
-import json
 import time
-import glob
+from collections import deque
+from random import choice
 
 
 class Graph(object):
@@ -13,6 +14,7 @@ class Graph(object):
         if isinstance(n, list):
             self.init_from_adj(n)
         else:
+            self._n = n
             self._adj = [0] * n
             for i in range(n):
                 self._adj[i] = [0]*n
@@ -20,10 +22,15 @@ class Graph(object):
             self._indegs = [0]*n
 
     def init_from_adj(self, adj):
+        self._n = len(adj)
         self._adj = adj
         n = len(adj)
         self._outdegs = [0]*n
         self._indegs = [0]*n
+        for i in range(0, n):
+            for nb in self.neighbours(i):
+                self._outdegs[i] += 1
+                self._indegs[nb] += 1
 
     @property
     def adj(self):
@@ -37,10 +44,48 @@ class Graph(object):
     def indegs(self):
         return self._indegs
 
+    def neighbours(self, v):
+        return [i for (i, e) in enumerate(self._adj[v]) if e > 0]
+
     def add_edge(self, u, v):
         self._adj[u][v] += 1
         self._outdegs[u] += 1
         self._indegs[v] += 1
+
+    def bfs(self, v):
+        cycles = []
+
+        pi = [-1] * self._n
+        dists = [-1] * self._n
+        q = deque()
+        q.append(v)
+        dists[v] == 0
+        while len(q) > 0:
+            vertex = q.popleft()
+            for nb in self.neighbours(vertex):
+                if dists[nb] == -1:
+                    dists[nb] = dists[vertex] + 1
+                    pi[nb] = vertex
+                    q.append(nb)
+                elif nb == v:
+                    cycle = [vertex]
+                    while v not in cycle:
+                        cycle += [pi[cycle[-1]]]
+                        cycles += [cycle]
+        return dists, cycles
+
+    def summary(self, alpha=0.5):
+        scores = []
+        cycles = []
+        for v in range(0, self._n):
+            dists, cyc = self.bfs(v)
+            score = sum([alpha**(d-1) for d in dists if d != -1])
+            for c in cyc:
+                if set(c) not in cycles:
+                    cycles += [set(c)]
+            scores += [score]
+        return scores, cycles
+
 
 
 
@@ -165,7 +210,6 @@ def main(showDescr = True):
                 for other in selection:
                     if other == selection[index]:
                         continue
-                    print(f"DEBUG adding edge from {valuelist[selection[index]]} to {valuelist[other]}")
                     graph.add_edge(selection[index], other)
         except KeyboardInterrupt:
 
@@ -179,14 +223,33 @@ def main(showDescr = True):
                 file.write(json_data)
             break
 
-    sorted_x = sorted(zip(valuelist, graph.outdegs), key=operator.itemgetter(1), reverse=True)
-    clear("Values sorted by number of times they 'outcompeted' others.")
-    print(f"A total of {sum(graph.outdegs)} comparisons has been done.\n")
+#    valdegs = zip(valuelist, graph.outdegs)
+#    sorted_x = sorted(valdegs, key=operator.itemgetter(1), reverse=True)
+#    clear("Values sorted by number of times they 'outcompeted' others.")
+#    print(f"A total of {sum(graph.outdegs)} comparisons has been done.\n")
+#    print("----- ---------------")
+#    for v, deg in sorted_x:
+#        print(f"{deg:>4}: {v}")
+
+    scores, cycles = graph.summary()
+    valscores = zip(valuelist, scores)
+    sorted_x = sorted(valscores, key=operator.itemgetter(1), reverse=True)
+    clear("Values sorted by (distance weighted) transitive number of 'outcompeted' others.")
+    print(f"A total of {sum(graph.outdegs)} edges are in the graph.\n")
     print("----- ---------------")
     for v, deg in sorted_x:
         print(f"{deg:>4}: {v}")
 
+    if len(cycles) == 0:
+        print("\nNo cycles detected.")
+    else:
+        print("\nDetected cycles:")
+    for cycle in sorted(cycles, key=lambda c: len(c)):
+        print(f"Cycle (length={len(cycle)}):")
+        for node in cycle:
+            print(f"\t{valuelist[node]}")
+
+
 
 if __name__ == "__main__":
     main(not (len(sys.argv) > 1 and sys.argv[1] == "--no-descr"))
-
