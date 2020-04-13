@@ -10,17 +10,39 @@ import glob
 
 class Graph(object):
     def __init__(self, n):
-        self._adj = [0] * n
-        for i in range(n):
-            self._adj[i] = [0]*n
+        if isinstance(n, list):
+            self.init_from_adj(n)
+        else:
+            self._adj = [0] * n
+            for i in range(n):
+                self._adj[i] = [0]*n
+            self._outdegs = [0]*n
+            self._indegs = [0]*n
+
+    def init_from_adj(self, adj):
+        self._adj = adj
+        n = len(adj)
+        self._outdegs = [0]*n
+        self._indegs = [0]*n
 
     @property
     def adj(self):
         return self._adj
 
+    @property
+    def outdegs(self):
+        return self._outdegs
+
+    @property
+    def indegs(self):
+        return self._indegs
+
     def add_edge(self, u, v):
         self._adj[u][v] += 1
-    
+        self._outdegs[u] += 1
+        self._indegs[v] += 1
+
+
 
 def loadValues():
     valuesFiles = glob.glob('*.values')
@@ -99,14 +121,16 @@ def get_input(min_value, max_value) -> int:
 
 def main(showDescr = True):
     print("welcome to the core value finder")
-    values = {}
     valueset = loadValues()
+    valuelist = list(valueset.keys())
+    n = len(valuelist)
+    graph = Graph(n)
 
     sessionPath = getSessionFilePath()
     try:
         with open(sessionPath) as json_file:
             data = json.load(json_file)
-            values = data['values']
+            graph = Graph(data['graph'])
     except Exception as e:
         print(f"Failed loading Session: {str(e)}")
         print("Fallback to new Session")
@@ -115,36 +139,39 @@ def main(showDescr = True):
     if not sessionPath:
         sessionPath = ".{}.session".format(time.strftime("%Y-%m-%d-%H:%M"))
         print("New Session: {}".format(sessionPath))
-        for v in valueset.keys():
-            values[v] = 0
 
-    for _ in range(len(values) ** 2):
-        #select shown values
+    for _ in range(n ** 2):
+        # select shown values
         selection = []
-        for _ in range(0,3):
-            while len(values) > len(selection):
-                newValue = choice([*values])
+        for _ in range(0, 3):
+            while n > len(selection):
+                newValue = choice([i for i in range(n)])
                 if newValue not in selection:
                     selection += [newValue]
                     break
         clear()
         if showDescr:
             for i in range(0, len(selection)):
-                valueName = selection[i]
+                valueName = valuelist[selection[i]]
                 desc = valueset.get(valueName, {}).get('descr', "")
                 print(f"[{i+1}] {valueName} -- {desc}")
         else:
             print(f"[1] {selection[0]} [2] {selection[1]} [3] {selection[2]}")
 
         try:
-            index = get_input(1, len(selection))
+            index = get_input(0, len(selection))
             if index:  # if index == 0: don't evaluate
-                values[selection[index - 1]] += 1
+                index -= 1
+                for other in selection:
+                    if other == selection[index]:
+                        continue
+                    print(f"DEBUG adding edge from {valuelist[selection[index]]} to {valuelist[other]}")
+                    graph.add_edge(selection[index], other)
         except KeyboardInterrupt:
 
             print(f"Saving Session: {sessionPath}")
             dump = {
-                "values": values,
+                "graph": graph.adj,
                 "timestamp": time.strftime("%Y%m%d-%H%M%S")
             }
             json_data = json.dumps(dump, indent=2)
@@ -152,12 +179,12 @@ def main(showDescr = True):
                 file.write(json_data)
             break
 
-    sorted_x = sorted(values.items(), key=operator.itemgetter(1), reverse=True)
+    sorted_x = sorted(zip(valuelist, graph.outdegs), key=operator.itemgetter(1), reverse=True)
     clear("Values sorted by number of times they 'outcompeted' others.")
-    print(f"A total of {sum(values.values())} comparisons has been done.\n")
+    print(f"A total of {sum(graph.outdegs)} comparisons has been done.\n")
     print("----- ---------------")
-    for k, v in sorted_x:
-        print(f"{v:>4}: {k}".format(k, v))
+    for v, deg in sorted_x:
+        print(f"{deg:>4}: {v}")
 
 
 if __name__ == "__main__":
